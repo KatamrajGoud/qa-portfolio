@@ -65,6 +65,9 @@ const knowledge: Record<string, KnowledgeEntry> = {
 
 type Project = typeof projects[number];
 
+const canHover = typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches;
+const isSmallScreen = typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches;
+
 function particlePositions(count: number) {
   const positions = new Float32Array(count * 3);
   for (let i = 0; i < count; i++) {
@@ -80,7 +83,7 @@ function particlePositions(count: number) {
 
 function ParticleField() {
   const ref = useRef<THREE.Points>(null);
-  const positions = useMemo(() => particlePositions(220), []);
+  const positions = useMemo(() => particlePositions(isSmallScreen ? 90 : 220), []);
   useFrame((_, delta) => { if (ref.current) ref.current.rotation.y += delta * 0.03; });
   return <Points ref={ref} positions={positions} stride={3} frustumCulled={false}><PointMaterial transparent color="#67e8f9" size={0.035} sizeAttenuation depthWrite={false} opacity={0.7} /></Points>;
 }
@@ -89,11 +92,11 @@ function HeroScene() {
   const reduce = useReducedMotion();
   const group = useRef<THREE.Group>(null);
   const { pointer } = useThree();
-  const [rotation, setRotation] = useState(0);
-  useFrame((state, delta) => {
-    if (!reduce) setRotation((value) => value + delta * 0.1);
+  const spin = useRef(0);
+  useFrame((_, delta) => {
+    if (!reduce) spin.current += delta * 0.1;
     if (group.current) {
-      group.current.rotation.y = THREE.MathUtils.lerp(group.current.rotation.y, rotation + pointer.x * 0.4, 0.05);
+      group.current.rotation.y = THREE.MathUtils.lerp(group.current.rotation.y, spin.current + pointer.x * 0.4, 0.05);
       group.current.rotation.x = THREE.MathUtils.lerp(group.current.rotation.x, 0.1 + pointer.y * 0.2, 0.05);
     }
   });
@@ -231,18 +234,18 @@ function App() {
         <div className="hero-visual">
           <div className="scene-frame">
             <div className="scene-label top-left"><span>QA.ENGINE / 01</span><span>LIVE SYSTEM</span></div>
-            <Canvas camera={{ position: [0, 0, 5.4], fov: 42 }} dpr={[1, 1.5]} gl={{ antialias: true, alpha: true }}>
+            <Canvas camera={{ position: [0, 0, 5.4], fov: 42 }} dpr={[1, 1.5]} gl={{ antialias: !isSmallScreen, alpha: true }}>
               <ambientLight intensity={0.5} />
               <pointLight position={[3, 3, 4]} intensity={12} color="#67e8f9" />
               <pointLight position={[-3, -2, 2]} intensity={8} color="#818cf8" />
               <Suspense fallback={null}><HeroScene /></Suspense>
-              <OrbitControls enableZoom={false} enablePan={false} autoRotate={false} />
+              {canHover && <OrbitControls enableZoom={false} enablePan={false} />}
             </Canvas>
             <div className="scene-label bottom-right"><span>INTERACTIVE CORE</span><span className="mini-bars"><i /><i /><i /><i /></span></div>
           </div>
           <div className="orbit-note note-one"><CircleDot size={12} /> defect detection</div>
           <div className="orbit-note note-two"><Zap size={12} /> quality signal</div>
-          <div className="orbit-note note-three"><MousePointerClick size={12} /> drag to rotate</div>
+          {canHover && <div className="orbit-note note-three"><MousePointerClick size={12} /> drag to rotate</div>}
         </div>
         <a className="scroll-cue" href="#about"><span>Scroll to explore</span><div className="scroll-line" /></a>
       </section>
